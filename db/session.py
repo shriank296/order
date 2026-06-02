@@ -1,9 +1,9 @@
 import logging
-from typing import Annotated
+from typing import Annotated, Generator
 
 from fastapi import Depends
 from sqlalchemy.engine import Engine, create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.settings import Settings, get_app_settings
 
@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 # SQLITE_DB_URL = "sqlite:///order_processing.db"
 
 _ENGINE: Engine | None = None
+_SESSION_FACTORY: sessionmaker | None = None
 
 
 def _get_engine(settings: Settings):
@@ -59,16 +60,20 @@ def get_engine(settings: Annotated[Settings, Depends(get_app_settings)]) -> Engi
     return _get_engine(settings)
 
 
-session_factory = sessionmaker(
-    autocommit=False,
-    autoflush=False,
-    bind=Depends(get_engine),
-)
+def _get_database_session(engine: Engine) -> Generator[Session]:
+    global _SESSION_FACTORY
+
+    if not _SESSION_FACTORY:
+        _SESSION_FACTORY = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+    session = _SESSION_FACTORY()
+
+    yield session
+
+    session.close()
 
 
-def get_session():
-    session = session_factory()
-    try:
-        yield session
-    finally:
-        session.close()
+def get_database_session(
+    engine: Annotated[Engine, Depends(get_engine)],
+) -> Generator[Session]:
+    yield from _get_database_session(engine)
