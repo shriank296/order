@@ -11,8 +11,6 @@ from db.session import get_engine
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_app_settings()
-    print(Base.metadata.tables.keys())
-    breakpoint()
     Base.metadata.create_all(get_engine(settings))
     yield
 

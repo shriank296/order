@@ -3,6 +3,7 @@ from typing import Annotated
 
 from fastapi import Depends
 from sqlalchemy.engine import Engine, create_engine
+from sqlalchemy.orm import sessionmaker
 
 from core.settings import Settings, get_app_settings
 
@@ -53,5 +54,21 @@ def get_engine(settings: Annotated[Settings, Depends(get_app_settings)]) -> Engi
 
     Returns:
         App database engine
+
     """
     return _get_engine(settings)
+
+
+session_factory = sessionmaker(
+    autocommit=False,
+    autoflush=False,
+    bind=Depends(get_engine),
+)
+
+
+def get_session():
+    session = session_factory()
+    try:
+        yield session
+    finally:
+        session.close()
