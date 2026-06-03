@@ -1,11 +1,14 @@
 import logging
-from typing import Annotated, Generator
+from typing import TYPE_CHECKING, Annotated
 
 from fastapi import Depends
 from sqlalchemy.engine import Engine, create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.settings import Settings, get_app_settings
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
 logger = logging.getLogger(__name__)
 

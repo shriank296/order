@@ -23,9 +23,15 @@ class Order(Base, TimeStampMixin):
     __tablename__ = "orders"
     id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
     customer_id: Mapped[UUID] = mapped_column(
-        Uuid, ForeignKey("users.id"), nullable=False
+        Uuid,
+        ForeignKey("users.id"),
+        nullable=False,
     )
     amount: Mapped[float] = mapped_column(Float, nullable=False)
-    status: Mapped[Status] = mapped_column(SQLEnum(Status), nullable=False)
+    status: Mapped[Status] = mapped_column(
+        SQLEnum(Status),
+        default=Status.PENDING,
+        nullable=False,
+    )
 
     user: Mapped["User"] = relationship(back_populates="orders", lazy="select")

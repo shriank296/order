@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
 from sqlalchemy import String, Uuid
@@ -13,8 +13,9 @@ if TYPE_CHECKING:
 class User(Base, TimeStampMixin):
     __tablename__ = "users"
     id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
-    name: Mapped[str] = mapped_column(String(40), nullable=False)
+    name: Mapped[str] = mapped_column(String(40), unique=True, nullable=False)
 
-    orders: Mapped[List["Order"]] = relationship(
-        back_populates="user", lazy="select"
+    orders: Mapped[list["Order"]] = relationship(
+        back_populates="user",
+        lazy="select",
     )  # not using cascade as do not want orders to be delete when user is deleted and also not want "all" for now.
