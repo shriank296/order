@@ -1,3 +1,4 @@
+from datetime import datetime
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
@@ -22,3 +23,5 @@ class CreateUser(User):
 
 class ReadUser(User):
     id: UUID
+    created_at: datetime
+    updated_at: datetime
