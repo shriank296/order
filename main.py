@@ -47,7 +47,8 @@ def create_user(
         session.rollback()
         logger.exception("User already exists", extra={"user": user_in.name})
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail="User already exists"
+            status_code=status.HTTP_409_CONFLICT,
+            detail="User already exists",
         ) from e
     except SQLAlchemyError as e:
         session.rollback()
