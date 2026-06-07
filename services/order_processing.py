@@ -1,0 +1,24 @@
+import logging
+from uuid import UUID
+
+from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
+
+from core.settings import get_app_settings
+from db.session import get_database_session
+from models.order import Order, Status
+
+logger = logging.getLogger(__name__)
+
+
+def process_order(order: dict, session: Session):
+    try:
+        order_id = UUID(order.get("order_id"))
+        order: Order = session.get(Order, order_id)
+        order.status = Status.PROCESSED
+        session.commit()
+        logger.warning("Order processed successfully")
+    except SQLAlchemyError as e:
+        session.rollback()
+        logger.exception("A database error occured.")

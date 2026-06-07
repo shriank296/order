@@ -63,6 +63,10 @@ def get_engine(settings: Annotated[Settings, Depends(get_app_settings)]) -> Engi
     return _get_engine(settings)
 
 
+def get_session_factory(settings: Settings) -> sessionmaker:
+    return sessionmaker(autocommit=False, autoflush=False, bind=get_engine(settings))
+
+
 def _get_database_session(engine: Engine) -> Generator[Session]:
     global _SESSION_FACTORY
 
