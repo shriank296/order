@@ -8,6 +8,8 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 import models  # noqa: F401
+from brokers.rabbitmq import RabbitMq, get_message_broker
+from core.logging import configure_logging
 from core.settings import get_app_settings
 from db.base import Base
 from db.session import get_database_session, get_engine
@@ -23,8 +25,13 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):  # noqa: ARG001
     settings = get_app_settings()
     Base.metadata.create_all(get_engine(settings))
+    broker = get_message_broker(settings)
+    broker.connect()
     yield
+    broker.close()
 
+
+configure_logging()
 
 app = FastAPI(
     title="Order Processing API",
@@ -61,10 +68,11 @@ def create_user(
     return user_obj
 
 
-@app.post("/place_order", response_model=ReadOrder)
+@app.post("/place_order", response_model=ReadOrder, status_code=status.HTTP_201_CREATED)
 def place_order(
     order_in: CreateOrder,
     session: Annotated[Session, Depends(get_database_session)],
+    broker: Annotated[RabbitMq, Depends(get_message_broker)],
 ):
     stmt = select(User).where(User.name == order_in.customer_name)
     customer = session.scalars(stmt).one_or_none()
@@ -87,5 +95,8 @@ def place_order(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error",
         ) from e
+
+    broker.send(queue_name="order", body={"order_id": str(order_obj.id)})
+    logger.info("Message sent successfully!")
 
     return order_obj

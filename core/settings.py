@@ -12,6 +12,10 @@ class Settings(BaseSettings):
     ENVIRONMENT: Literal["local", "testing", "dev", "tst", "uat", "prd"]
     POOL_SIZE: int = 5
     SQLITE_DB_URL: str = "sqlite:///order_processing.db"
+    # Message broker setting
+    RMQ_USER: str
+    RMQ_PASSWORD: str | None
+    RMQ_HOST: str
 
 
 def get_app_settings() -> Settings:
