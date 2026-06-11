@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     RMQ_USER: str
     RMQ_PASSWORD: str | None
     RMQ_HOST: str
+    # testing
+    TEST_DB_URL: str = "sqlite:///memory:"
 
 
 def get_app_settings() -> Settings:

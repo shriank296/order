@@ -1,6 +1,7 @@
 import logging
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, Annotated
+from uuid import UUID
 
 from fastapi import Depends, FastAPI, HTTPException, status
 from sqlalchemy import select
@@ -100,3 +101,17 @@ def place_order(
     logger.info("Message sent successfully!")
 
     return order_obj
+
+
+@app.get("/order/{order_id}", response_model=ReadOrder)
+def get_order(
+    order_id: UUID,
+    session: Annotated[Session, Depends(get_database_session)],
+):
+    order = session.get(Order, order_id)
+    if not order:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Order with id {order_id} not found",
+        )
+    return order
