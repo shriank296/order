@@ -26,8 +26,8 @@ def _get_engine(settings: Settings):
     if settings.ENVIRONMENT not in ("dev", "tst", "uat", "prd"):
         # db_url = f"postresql+psycopg://{settings.DB_USER}:{settings.DB_PASSWORD}@{settings.DB_HOST}:{settings.DB_PORT}/{settings.DB_NAME}"
         db_url = settings.SQLITE_DB_URL
-    else:
-        pass
+    elif settings.ENVIRONMENT == "testing":
+        db_url = settings.TEST_DB_URL
 
     if not _ENGINE:
         _ENGINE = create_engine(

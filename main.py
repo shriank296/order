@@ -42,7 +42,7 @@ app = FastAPI(
 )
 
 
-@app.post("/create_user", response_model=ReadUser)
+@app.post("/create_user", response_model=ReadUser, status_code=status.HTTP_201_CREATED)
 def create_user(
     user_in: CreateUser,
     session: Annotated[Session, Depends(get_database_session)],
