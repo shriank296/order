@@ -1,12 +1,9 @@
 import logging
 from uuid import UUID
 
-from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from core.settings import get_app_settings
-from db.session import get_database_session
 from models.order import Order, Status
 
 logger = logging.getLogger(__name__)
