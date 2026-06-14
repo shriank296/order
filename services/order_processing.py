@@ -16,9 +16,12 @@ def process_order(order: dict, session: Session):
     try:
         order_id = UUID(order.get("order_id"))
         order: Order = session.get(Order, order_id)
+        if order is None:
+            raise ValueError(f"order {order_id} not found")
         order.status = Status.PROCESSED
         session.commit()
-        logger.warning("Order processed successfully")
+        logger.info("Order processed successfully")
     except SQLAlchemyError as e:
         session.rollback()
         logger.exception("A database error occured.")
+        raise
