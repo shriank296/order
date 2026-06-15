@@ -27,3 +27,19 @@ def test_process_order_unsuccessful(db_session, create_tables):
             {"order_id": "00000000-0000-0000-0000-000000000000"}, mock_session
         )
     mock_session.rollback.assert_called_once()
+
+
+def test_process_order_invalid_uuid(db_session, create_tables):
+    with pytest.raises(ValueError):
+        process_order({"order_id": "not-a-uuid"}, db_session)
+
+
+def test_process_order_not_in_db(db_session, create_tables):
+    mock_session = MagicMock()
+    mock_session.get.return_value = None
+    with pytest.raises(ValueError):
+        process_order(
+            process_order(
+                {"order_id": "00000000-0000-0000-0000-000000000000"}, mock_session
+            )
+        )
