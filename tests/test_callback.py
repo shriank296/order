@@ -24,5 +24,5 @@ def test_callback_success():
         mock_process_order.assert_called_once_with(
             {"order_id": "00000000-0000-0000-0000-000000000000"}, mock_session
         )
-        mock_channel.basic_ack.assert_called_once()
-        mock_channel.basic_nack.assert_not_called()
+    mock_channel.basic_ack.assert_called_once()
+    mock_channel.basic_nack.assert_not_called()
