@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from sqlalchemy.exc import SQLAlchemyError
 
+from exceptions import DatabaseException, InvalidMessage, OrderNotFound
 from models.order import Order, Status
 from services.order_processing import process_order
 
@@ -22,7 +23,7 @@ def test_process_order_unsuccessful(db_session, create_tables):
     mock_order = MagicMock()
     mock_session.get.return_value = mock_order
     mock_session.commit.side_effect = SQLAlchemyError("DB Error")
-    with pytest.raises(SQLAlchemyError):
+    with pytest.raises(DatabaseException):
         process_order(
             {"order_id": "00000000-0000-0000-0000-000000000000"}, mock_session
         )
@@ -30,14 +31,14 @@ def test_process_order_unsuccessful(db_session, create_tables):
 
 
 def test_process_order_invalid_uuid(db_session, create_tables):
-    with pytest.raises(ValueError):
+    with pytest.raises(InvalidMessage):
         process_order({"order_id": "not-a-uuid"}, db_session)
 
 
 def test_process_order_not_in_db(db_session, create_tables):
     mock_session = MagicMock()
     mock_session.get.return_value = None
-    with pytest.raises(ValueError):
+    with pytest.raises(OrderNotFound):
         process_order(
             process_order(
                 {"order_id": "00000000-0000-0000-0000-000000000000"}, mock_session

@@ -21,8 +21,8 @@ def test_callback_success():
                 mock_session_factory.return_value.__enter__.return_value = mock_session
                 body = b'{"order_id":"00000000-0000-0000-0000-000000000000"}'
                 callback(mock_channel, mock_method, BasicProperties(), body)
-        mock_process_order.assert_called_once_with(
-            {"order_id": "00000000-0000-0000-0000-000000000000"}, mock_session
-        )
+    mock_process_order.assert_called_once_with(
+        {"order_id": "00000000-0000-0000-0000-000000000000"}, mock_session
+    )
     mock_channel.basic_ack.assert_called_once()
     mock_channel.basic_nack.assert_not_called()
