@@ -74,6 +74,37 @@ class RabbitMq:
         self.channel.basic_consume(queue_name, on_message_callback=callback)
         self.channel.start_consuming()
 
+    def create_order_topology(self):
+        self.channel.exchange_declare(
+            exchange="order_exchange", exchange_type="direct", durable=True
+        )
+        self.channel.queue_declare(
+            queue="order_queue",
+            durable=True,
+            arguments={"x-queue-type": "quorum"},
+        )
+        self.channel.queue_declare(
+            queue="order_retry_queue",
+            durable=True,
+            arguments={"x-queue-type": "quorum"},
+        )
+        self.channel.queue_declare(
+            queue="order_dlq",
+            durable=True,
+            arguments={"x-queue-type": "quorum"},
+        )
+        self.channel.queue_bind(
+            queue="order_queue", exchange="order_exchange", routing_key="order.created"
+        )
+        self.channel.queue_bind(
+            queue="order_retry_queue",
+            exchange="order_exchange",
+            routing_key="order.retry",
+        )
+        self.channel.queue_bind(
+            queue="order_dlq", exchange="order_exchange", routing_key="order.dlq"
+        )
+
 
 def get_message_broker(
     settings: Annotated[Settings, Depends(get_app_settings)],

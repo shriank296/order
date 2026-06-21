@@ -11,6 +11,7 @@ from pika.spec import Basic
 from brokers.rabbitmq import RabbitMq
 from core.settings import get_app_settings
 from db.session import get_database_session, get_engine, get_session_factory
+from exceptions import NonRetryableException, RetryableException
 from services.order_processing import process_order
 
 logger = logging.getLogger(__name__)
@@ -30,12 +31,16 @@ def callback(
         try:
             payload = json.loads(body.decode())
             process_order(payload, session)
+        except RetryableException:
+            logger.exception("Order processing failed. It will be retried")
+            ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
+        except NonRetryableException:
+            logger.exception("Order processing failed")
+            ch.basic_ack(delivery_tag=method.delivery_tag)
+        else:
             ch.basic_ack(
                 delivery_tag=method.delivery_tag,
             )
-        except Exception:
-            logger.exception("Order processing failed.")
-            ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
 
 
 def worker():
