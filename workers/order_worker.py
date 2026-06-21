@@ -48,8 +48,9 @@ def worker():
     while True:
         broker = RabbitMq(settings.RMQ_HOST, settings.RMQ_USER, settings.RMQ_PASSWORD)
         broker.connect()
+        broker.setup_topology()
         try:
-            broker.receive(queue_name="order", callback=callback)
+            broker.receive(queue_name="order_queue", callback=callback)
         except Exception:
             logger.exception("Worker crashed")
         finally:

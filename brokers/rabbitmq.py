@@ -105,6 +105,9 @@ class RabbitMq:
             queue="order_dlq", exchange="order_exchange", routing_key="order.dlq"
         )
 
+    def setup_topology(self):
+        self.create_order_topology()
+
 
 def get_message_broker(
     settings: Annotated[Settings, Depends(get_app_settings)],

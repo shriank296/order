@@ -56,7 +56,7 @@ def test_create_order(test_client, create_tables, set_environment, db_session): 
         assert order is not None  # noqa: S101
         assert order.customer_id == user.id  # noqa: S101
         mock_broker.send.assert_called_once_with(
-            queue_name="order",
+            queue_name="order_queue",
             body={"order_id": str(response.json()["id"])},
         )
     finally:
