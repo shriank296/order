@@ -54,6 +54,14 @@ class RabbitMq:
             properties=pika.BasicProperties(delivery_mode=pika.DeliveryMode.Persistent),
         )
 
+    def publish(self, exchange: str, routing_key: str, body: dict):
+        self.channel.basic_publish(
+            exchange=exchange,
+            routing_key=routing_key,
+            body=json.dumps(body),
+            properties=pika.BasicProperties(delivery_mode=pika.DeliveryMode.Persistent),
+        )
+
     def __exit__(self, exc_type, exc, tb):
         if exc_type:
             logger.error(

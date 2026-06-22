@@ -97,7 +97,11 @@ def place_order(
             detail="Internal server error",
         ) from e
 
-    broker.send(queue_name="order_queue", body={"order_id": str(order_obj.id)})
+    broker.publish(
+        exchange="order_exchange",
+        routing_key="order.created",
+        body={"order_id": str(order_obj.id)},
+    )
     logger.info("Message sent successfully!")
 
     return order_obj
