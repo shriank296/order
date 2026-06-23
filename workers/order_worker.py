@@ -22,6 +22,7 @@ logging.basicConfig(
 )
 
 print(sys.path)
+MAX_RETRY = 3
 
 
 def callback(
@@ -38,11 +39,42 @@ def callback(
             process_order(payload, session)
         except RetryableException:
             logger.exception("Order processing failed. It will be retried")
-            ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
+            retry_count = properties.headers.get("retry")
+            logger.info(
+                "Retry count: %s",
+                retry_count,
+            )
+            if retry_count >= MAX_RETRY:
+                ch.basic_publish(
+                    exchange="order_exchange",
+                    routing_key="order.dlq",
+                    body=body,
+                    properties=pika.BasicProperties(
+                        delivery_mode=pika.DeliveryMode.Persistent,
+                        headers={"retry": retry_count},
+                    ),
+                )
+                logger.info("Message sent to DLQ after retries")
+            else:
+                retry_count += 1
+                ch.basic_publish(
+                    exchange="order_exchange",
+                    routing_key="order.retry",
+                    body=body,
+                    properties=pika.BasicProperties(
+                        delivery_mode=pika.DeliveryMode.Persistent,
+                        headers={"retry": retry_count},
+                    ),
+                )
         except NonRetryableException:
             logger.exception("Order processing failed")
-            ch.basic_ack(delivery_tag=method.delivery_tag)
-        else:
+            ch.basic_publish(
+                exchange="order_exchange",
+                routing_key="order.dlq",
+                body=body,
+            )
+            logger.info("Message sent to DLQ.")
+        finally:
             ch.basic_ack(
                 delivery_tag=method.delivery_tag,
             )

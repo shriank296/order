@@ -59,7 +59,9 @@ class RabbitMq:
             exchange=exchange,
             routing_key=routing_key,
             body=json.dumps(body),
-            properties=pika.BasicProperties(delivery_mode=pika.DeliveryMode.Persistent),
+            properties=pika.BasicProperties(
+                delivery_mode=pika.DeliveryMode.Persistent, headers={"retry": 0}
+            ),
         )
 
     def __exit__(self, exc_type, exc, tb):
@@ -94,7 +96,12 @@ class RabbitMq:
         self.channel.queue_declare(
             queue="order_retry_queue",
             durable=True,
-            arguments={"x-queue-type": "quorum"},
+            arguments={
+                "x-queue-type": "quorum",
+                "x-message-ttl": 10000,
+                "x-dead-letter-exchange": "order_exchange",
+                "x-dead-letter-routing-key": "order.created",
+            },
         )
         self.channel.queue_declare(
             queue="order_dlq",
@@ -110,7 +117,9 @@ class RabbitMq:
             routing_key="order.retry",
         )
         self.channel.queue_bind(
-            queue="order_dlq", exchange="order_exchange", routing_key="order.dlq"
+            queue="order_dlq",
+            exchange="order_exchange",
+            routing_key="order.dlq",
         )
 
     def setup_topology(self):

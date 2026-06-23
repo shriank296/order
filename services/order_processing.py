@@ -16,6 +16,7 @@ def process_order(payload: dict, session: Session):
     except (TypeError, ValueError) as e:
         raise InvalidMessage("Invalid order_id") from e
     try:
+        raise SQLAlchemyError("database error")
         order: Order = session.get(Order, order_id)
         if order is None:
             raise OrderNotFound(order_id)
