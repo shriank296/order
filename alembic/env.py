@@ -5,7 +5,7 @@ from sqlalchemy import engine_from_config, pool
 from alembic import context
 from core.settings import get_app_settings
 from db.base import Base
-from models import Order, User
+from models import Order, User  # noqa: F401
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -28,12 +28,10 @@ target_metadata = Base.metadata
 # ... etc.
 
 
-def get_db_url():
-    settings = get_app_settings()
-    return f"postgresql+psycopg://{settings.DB_USER}:{settings.DB_PASSWORD}@{settings.DB_HOST}:5432/{settings.DB_NAME}"
+settings = get_app_settings()
 
 
-config.set_main_option("sqlalchemy.url", get_db_url())
+config.set_main_option("sqlalchemy.url", settings.database_url)
 
 
 def run_migrations_offline() -> None:

@@ -19,6 +19,16 @@ class Settings(BaseSettings):
     # testing
     TEST_DB_URL: str = "sqlite:///memory:"
 
+    @property
+    def database_url(self):
+        return (
+            f"postgresql+psycopg://"
+            f"{self.DB_USER}:"
+            f"{self.DB_PASSWORD}@"
+            f"{self.DB_HOST}/"
+            f"{self.DB_NAME}"
+        )
+
 
 def get_app_settings() -> Settings:
     return Settings()

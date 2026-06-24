@@ -10,7 +10,7 @@ from pika.spec import Basic
 
 from brokers.rabbitmq import RabbitMq
 from core.settings import get_app_settings
-from db.session import get_database_session, get_engine, get_session_factory
+from db.session import get_session_factory
 from exceptions import NonRetryableException, RetryableException
 from services.order_processing import process_order
 
