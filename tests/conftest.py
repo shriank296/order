@@ -3,8 +3,10 @@ from collections.abc import Generator
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
+from testcontainers.postgres import PostgresContainer
+from testcontainers.rabbitmq import RabbitMqContainer
 
-from core.settings import get_app_settings
+from core.settings import Settings, get_app_settings
 from db import Base
 from db.session import get_database_session, get_engine
 from models.order import Order, Status
@@ -71,3 +73,29 @@ def order_factory(db_session):
         return order
 
     return create_order
+
+
+@pytest.fixture(scope="session")
+def postres_container():
+    postgresql = PostgresContainer("postgres:17-alpine", dbname="test_db")
+    postgresql.start()
+
+    def load_database_from_alembic():
+        pass
+
+
+@pytest.fixture(scope="session")
+def rabbitmq_container():
+    with RabbitMqContainer("rabbitmq:4-management") as rabbitmq:
+        yield rabbitmq
+
+
+@pytest.fixture
+def test_settings(postres_container, rabbitmq_container):
+    settings = Settings(
+        DB_HOST=postres_container.get_container_host_ip(),
+        DB_PORT=postres_container.get_exposed_port(5432),
+        RMQ_HOST=rabbitmq_container.get_container_host_ip(),
+        RMQ_PORT=rabbitmq_container.get_exposed_port(5672),
+    )
+    return settings
