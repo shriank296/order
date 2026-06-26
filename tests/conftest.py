@@ -1,16 +1,23 @@
+import logging
 from collections.abc import Generator
 
 import pytest
+from alembic.config import Config
 from fastapi.testclient import TestClient
+from psycopg import Connection, connect
 from sqlalchemy.orm import Session
 from testcontainers.postgres import PostgresContainer
 from testcontainers.rabbitmq import RabbitMqContainer
 
+from alembic import command, script
 from core.settings import Settings, get_app_settings
 from db import Base
 from db.session import get_database_session, get_engine
 from models.order import Order, Status
 from models.user import User
+from tests.helpers import build_postgres_dsn
+
+logger = logging.getLogger(__name__)
 
 
 @pytest.fixture
@@ -76,12 +83,43 @@ def order_factory(db_session):
 
 
 @pytest.fixture(scope="session")
-def postres_container():
+def postres_container() -> Generator[Connection]:
     postgresql = PostgresContainer("postgres:17-alpine", dbname="test_db")
     postgresql.start()
 
-    def load_database_from_alembic():
-        pass
+    def load_database_from_alembic(db_connection: Connection):
+        dsn = build_postgres_dsn(
+            password=postgresql.password, **db_connection.info.dsn_parameters
+        )
+        with db_connection.cursor():
+            alembic_cfg = Config()
+            alembic_cfg.set_main_option("script_location", "alembic")
+
+            directory = script.ScriptDirectory.from_config(alembic_cfg)
+            logger.debug("current head is %r", directory.get_heads())
+
+            # overwrite existing sqlalchemyURL with test container postgres
+            alembic_cfg.set_main_option("sqlalchemy.url", dsn)
+            # Given we start with an empty database we start at base.
+            # Stamping this sets up the internal Alembic table that is used for
+            # versioning in migrations.
+            logger.debug("Stamping as current version.")
+            command.stamp(alembic_cfg, "base")
+
+            # Upgrade to head
+            command.upgrade(alembic_cfg, "head")
+
+            db_connection.commit()
+
+        db_connection = connect(
+            dbname=postgresql.dbname,
+            user=postgresql.username,
+            password=postgresql.password,
+            host=postgresql.get_container_host_ip(),
+            port=postgresql.get_exposed_port(5432),
+        )
+        load_database_from_alembic(db_connection)
+        return db_connection
 
 
 @pytest.fixture(scope="session")
