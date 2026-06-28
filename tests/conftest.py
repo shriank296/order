@@ -1,4 +1,5 @@
 import logging
+import os
 from collections.abc import Generator
 
 import pytest
@@ -23,8 +24,6 @@ logger = logging.getLogger(__name__)
 
 @pytest.fixture
 def set_environment():
-    import os  # noqa: PLC0415
-
     os.environ["ENVIRONMENT"] = "testing"
 
 
@@ -49,26 +48,26 @@ def db_session(set_environment) -> Generator[Session]:  # noqa: ARG001
 
 
 @pytest.fixture
-def user_factory(db_session):
+def user_factory(test_session):
     def create_user(**kwargs):
         user = User(name=kwargs.get("name", "test_user"))
-        db_session.add(user)
-        db_session.commit()
+        test_session.add(user)
+        test_session.commit()
         return user
 
     return create_user
 
 
 @pytest.fixture
-def order_factory(db_session):
+def order_factory(test_session):
     def create_order(**kwargs):
         order = Order(
             customer_id=kwargs.get("customer_id"),
             amount=kwargs.get("amount", 1000),
             status=kwargs.get("status", Status.PENDING),
         )
-        db_session.add(order)
-        db_session.commit()
+        test_session.add(order)
+        test_session.commit()
         return order
 
     return create_order
@@ -160,7 +159,12 @@ def _db(postgres: Connection) -> Generator[Engine]:
 
 @pytest.fixture(scope="session")
 def test_session(_db):
-    return get_database_session(_db)
+    gen = get_database_session(_db)
+    session = next(gen)
+    try:
+        yield session
+    finally:
+        gen.close()
 
 
 @pytest.fixture(scope="session")
@@ -182,8 +186,17 @@ def test_client(
 ):
     from main import app
 
-    client = TestClient(app)
-    client.app.dependency_overrides[get_app_settings] = lambda: dev_setting_override
-    client.app.dependency_overrides[get_engine] = lambda: _db
+    # client = TestClient(app)
+    # client.app.dependency_overrides[get_app_settings] = lambda: dev_setting_override
+    # client.app.dependency_overrides[get_engine] = lambda: _db
 
-    return client
+    # return client
+    os.environ["ENVIRONMENT"] = "testing"
+    app.dependency_overrides[get_app_settings] = lambda: dev_setting_override
+
+    app.dependency_overrides[get_engine] = lambda: _db
+
+    with TestClient(app) as client:
+        yield client
+
+    app.dependency_overrides.clear()

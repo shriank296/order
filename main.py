@@ -26,10 +26,14 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):  # noqa: ARG001
     settings = get_app_settings()
     # Base.metadata.create_all(get_engine(settings))
-    broker = get_message_broker(settings)
-    broker.connect()
+    if settings.ENVIRONMENT != "testing":
+        broker = get_message_broker(settings)
+        broker.connect()
+    print("<<<<STARTUP")
     yield
-    broker.close()
+    print("<<<<SHUTDOWN")
+    if settings.ENVIRONMENT != "testing":
+        broker.close()
 
 
 configure_logging()

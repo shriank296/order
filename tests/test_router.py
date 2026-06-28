@@ -34,7 +34,7 @@ def test_create_user_raises_integrity_error(test_client):
         app.dependency_overrides.clear()
 
 
-def test_create_order(test_client, create_tables, set_environment, db_session):  # noqa: ARG001
+def test_create_order(test_client, postgres, test_session):  # noqa: ARG001
     """
     Tests order create endpoint.
 
@@ -42,8 +42,8 @@ def test_create_order(test_client, create_tables, set_environment, db_session): 
     Overrides get broker depedency to use mock broker.
     """
     user = User(name="test_user2")
-    db_session.add(user)
-    db_session.commit()
+    test_session.add(user)
+    test_session.commit()
     mock_broker = MagicMock()
     app.dependency_overrides[get_message_broker] = lambda: mock_broker
     try:
@@ -52,11 +52,12 @@ def test_create_order(test_client, create_tables, set_environment, db_session): 
             json={"customer_name": "test_user2", "amount": 1000, "status": "pending"},
         )
         assert response.status_code == 201, response.json()  # noqa: PLR2004
-        order = db_session.get(Order, UUID(response.json()["id"]))
+        order = test_session.get(Order, UUID(response.json()["id"]))
         assert order is not None  # noqa: S101
         assert order.customer_id == user.id  # noqa: S101
-        mock_broker.send.assert_called_once_with(
-            queue_name="order_queue",
+        mock_broker.publish.assert_called_once_with(
+            exchange="order_exchange",
+            routing_key="order.created",
             body={"order_id": str(response.json()["id"])},
         )
     finally:
@@ -64,9 +65,9 @@ def test_create_order(test_client, create_tables, set_environment, db_session): 
 
 
 def test_get_order_sucessfull(
-    test_client, create_tables, db_session, order_factory, user_factory
+    test_client, postgres, test_session, order_factory, user_factory
 ):  # noqa: ARG001
-    user = user_factory()
+    user = user_factory(name="random_user")
     order = order_factory(customer_id=user.id, amount=2000)
     order_id = order.id
     response = test_client.get(f"/order/{order_id}")
@@ -78,7 +79,7 @@ def test_get_order_sucessfull(
     assert data["status"] == "pending"
 
 
-def test_get_order_not_found(test_client, create_tables, db_session):
+def test_get_order_not_found(test_client, postgres, test_session):
     response = test_client.get("/order/00000000-0000-0000-0000-000000000000")
     assert response.status_code == 404, response.json()
     assert (
@@ -87,18 +88,18 @@ def test_get_order_not_found(test_client, create_tables, db_session):
     )
 
 
-def test_create_order_customer_not_found(test_client, create_tables, db_session):
+def test_create_order_customer_not_found(test_client, postgres, test_session):
     response = test_client.post(
         "/place_order",
-        json={"customer_name": "test_user2", "amount": 1000, "status": "pending"},
+        json={"customer_name": "test_user3", "amount": 1000, "status": "pending"},
     )
     assert response.status_code == 404, response.json()
-    assert response.json()["detail"] == "Customer test_user2 does not exist"
+    assert response.json()["detail"] == "Customer test_user3 does not exist"
 
 
-def test_create_order_validation_error(test_client, create_tables, db_session):
+def test_create_order_validation_error(test_client, postgres, test_session):
     response = test_client.post(
         "/place_order",
-        json={"customer_name": "test_user2", "amount": "str", "status": "pending"},
+        json={"customer_name": "test_user4", "amount": "str", "status": "pending"},
     )
     assert response.status_code == 422, response.json()
