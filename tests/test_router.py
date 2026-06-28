@@ -10,7 +10,7 @@ from models import User
 from models.order import Order
 
 
-def test_create_user(test_client, create_tables):  # noqa: ARG001
+def test_create_user(postgres, test_client):  # noqa: ARG001
     response = test_client.post("/create_user", json={"name": "test_user"})
     assert response.status_code == 201, response.json()  # noqa: PLR2004
 

@@ -5,6 +5,7 @@ import pytest
 from alembic.config import Config
 from fastapi.testclient import TestClient
 from psycopg import Connection, connect
+from sqlalchemy import Engine, create_engine
 from sqlalchemy.orm import Session
 from testcontainers.postgres import PostgresContainer
 from testcontainers.rabbitmq import RabbitMqContainer
@@ -33,15 +34,6 @@ def create_tables(set_environment):  # noqa: ARG001
     engine = get_engine(settings)
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
-
-
-@pytest.fixture
-def test_client(set_environment):
-    from main import app
-
-    client = TestClient(app)
-
-    return client
 
 
 @pytest.fixture
@@ -83,13 +75,13 @@ def order_factory(db_session):
 
 
 @pytest.fixture(scope="session")
-def postres_container() -> Generator[Connection]:
-    postgresql = PostgresContainer("postgres:17-alpine", dbname="test_db")
+def postgres() -> Generator[Connection]:
+    postgresql = PostgresContainer("postgres:17", dbname="test_db")
     postgresql.start()
 
     def load_database_from_alembic(db_connection: Connection):
         dsn = build_postgres_dsn(
-            password=postgresql.password, **db_connection.info.dsn_parameters
+            password=postgresql.password, **db_connection.info.get_parameters()
         )
         with db_connection.cursor():
             alembic_cfg = Config()
@@ -111,15 +103,15 @@ def postres_container() -> Generator[Connection]:
 
             db_connection.commit()
 
-        db_connection = connect(
-            dbname=postgresql.dbname,
-            user=postgresql.username,
-            password=postgresql.password,
-            host=postgresql.get_container_host_ip(),
-            port=postgresql.get_exposed_port(5432),
-        )
-        load_database_from_alembic(db_connection)
-        return db_connection
+    db_connection = connect(
+        dbname=postgresql.dbname,
+        user=postgresql.username,
+        password=postgresql.password,
+        host=postgresql.get_container_host_ip(),
+        port=postgresql.get_exposed_port(5432),
+    )
+    load_database_from_alembic(db_connection)
+    return db_connection
 
 
 @pytest.fixture(scope="session")
@@ -129,11 +121,69 @@ def rabbitmq_container():
 
 
 @pytest.fixture
-def test_settings(postres_container, rabbitmq_container):
+def test_settings(postgres, rabbitmq_container):
     settings = Settings(
-        DB_HOST=postres_container.get_container_host_ip(),
-        DB_PORT=postres_container.get_exposed_port(5432),
+        DB_HOST=postgres.postgresget_container_host_ip(),
+        DB_PORT=postgres.postgresget_exposed_port(5432),
         RMQ_HOST=rabbitmq_container.get_container_host_ip(),
         RMQ_PORT=rabbitmq_container.get_exposed_port(5672),
     )
     return settings
+
+
+@pytest.fixture(scope="session")
+def _db(postgres: Connection) -> Generator[Engine]:
+    """
+    Internal fixture used within the `conftest.py`.
+    DO NOT USE THIS FIXTURE IN THE TESTS.
+    """
+
+    dsn = build_postgres_dsn(
+        host="127.0.0.1",
+        port=str(postgres.info.port),
+        user=postgres.info.user,
+        password=postgres.info.password,
+        dbname=postgres.info.dbname,
+    )
+    engine = create_engine(
+        dsn,
+        future=True,
+        pool_size=80,
+        max_overflow=0,
+        pool_recycle=10,
+        pool_timeout=5,
+    )
+    yield engine
+
+    engine.dispose()
+
+
+@pytest.fixture(scope="session")
+def test_session(_db):
+    return get_database_session(_db)
+
+
+@pytest.fixture(scope="session")
+def dev_setting_override(postgres):
+    """Override config to use test runner defined over local env."""
+    return Settings(
+        ENVIRONMENT="testing",
+        DB_NAME=postgres.info.dbname,
+        DB_PORT=str(postgres.info.port),
+        DB_USER=postgres.info.user,
+        DB_HOST="localhost",
+    )
+
+
+@pytest.fixture
+def test_client(
+    dev_setting_override,
+    _db: Engine,
+):
+    from main import app
+
+    client = TestClient(app)
+    client.app.dependency_overrides[get_app_settings] = lambda: dev_setting_override
+    client.app.dependency_overrides[get_engine] = lambda: _db
+
+    return client

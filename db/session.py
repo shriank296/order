@@ -23,11 +23,12 @@ def _get_engine(settings: Settings):
 
     logger.debug("Setting up new database engine.")
 
-    if settings.ENVIRONMENT not in ("dev", "tst", "uat", "prd"):
-        # db_url = f"postresql+psycopg://{settings.DB_USER}:{settings.DB_PASSWORD}@{settings.DB_HOST}:{settings.DB_PORT}/{settings.DB_NAME}"
-        db_url = settings.database_url
-    elif settings.ENVIRONMENT == "testing":
-        db_url = settings.TEST_DB_URL
+    # if settings.ENVIRONMENT not in ("dev", "tst", "uat", "prd"):
+    # db_url = f"postresql+psycopg://{settings.DB_USER}:{settings.DB_PASSWORD}@{settings.DB_HOST}:{settings.DB_PORT}/{settings.DB_NAME}"
+    db_url = settings.database_url
+    breakpoint()
+    # elif settings.ENVIRONMENT == "testing":
+    #     db_url = settings.TEST_DB_URL
 
     if not _ENGINE:
         _ENGINE = create_engine(

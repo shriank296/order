@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):  # noqa: ARG001
     settings = get_app_settings()
-    Base.metadata.create_all(get_engine(settings))
+    # Base.metadata.create_all(get_engine(settings))
     broker = get_message_broker(settings)
     broker.connect()
     yield
