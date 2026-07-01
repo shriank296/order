@@ -15,15 +15,22 @@ RABBIT_MQ_BROKER: RabbitMq | None = None
 
 
 class RabbitMq:
-    def __init__(self, host: str, user_name: str, password: str):
+    def __init__(self, host: str, port: int, user_name: str, password: str):
         self.host = host
+        self.port = port
         self.user_name = user_name
         self.password = password
 
     def connect(self):
         credentials = pika.PlainCredentials(self.user_name, self.password)
         connection = pika.BlockingConnection(
-            pika.ConnectionParameters(host=self.host, credentials=credentials),
+            pika.ConnectionParameters(
+                host=self.host,
+                port=self.port,
+                credentials=credentials,
+                connection_attempts=5,
+                retry_delay=1,
+            ),
         )
         self.connection = connection
         self.channel = self.connection.channel()
@@ -134,6 +141,7 @@ def get_message_broker(
     if not RABBIT_MQ_BROKER:
         RABBIT_MQ_BROKER = RabbitMq(
             settings.RMQ_HOST,
+            settings.RMQ_PORT,
             settings.RMQ_USER,
             settings.RMQ_PASSWORD,
         )

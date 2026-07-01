@@ -6,6 +6,7 @@ import pytest
 from alembic.config import Config
 from fastapi.testclient import TestClient
 from psycopg import Connection, connect
+from pytest import MonkeyPatch
 from sqlalchemy import Engine, create_engine
 from sqlalchemy.orm import Session
 from testcontainers.postgres import PostgresContainer
@@ -168,7 +169,7 @@ def test_session(_db):
 
 
 @pytest.fixture(scope="session")
-def dev_setting_override(postgres):
+def dev_setting_override(postgres, rabbitmq_container):
     """Override config to use test runner defined over local env."""
     return Settings(
         ENVIRONMENT="testing",
@@ -176,6 +177,10 @@ def dev_setting_override(postgres):
         DB_PORT=str(postgres.info.port),
         DB_USER=postgres.info.user,
         DB_HOST="localhost",
+        RMQ_HOST=rabbitmq_container.get_container_host_ip(),
+        RMQ_PORT=int(rabbitmq_container.get_exposed_port(5672)),
+        RMQ_USER="guest",
+        RMQ_PASSWORD="guest",
     )
 
 
@@ -183,6 +188,7 @@ def dev_setting_override(postgres):
 def test_client(
     dev_setting_override,
     _db: Engine,
+    monkeypatch,
 ):
     from main import app
 
@@ -196,6 +202,7 @@ def test_client(
 
     app.dependency_overrides[get_engine] = lambda: _db
 
+    monkeypatch.setattr("main.get_app_settings", lambda: dev_setting_override)
     with TestClient(app) as client:
         yield client
 

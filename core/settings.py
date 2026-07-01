@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     RMQ_USER: str
     RMQ_PASSWORD: str | None
     RMQ_HOST: str
+    RMQ_PORT: int
     # testing
     TEST_DB_URL: str = "sqlite:///memory:"
 
@@ -25,7 +26,7 @@ class Settings(BaseSettings):
             f"postgresql+psycopg://"
             f"{self.DB_USER}:"
             f"{self.DB_PASSWORD}@"
-            f"{self.DB_HOST}/"
+            f"{self.DB_HOST}:"
             f"{self.DB_PORT}/"
             f"{self.DB_NAME}"
         )
